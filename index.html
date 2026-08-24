@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wercker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* CSSは前回から変更なし */
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: #e9ecef;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+  }
+  #app {
+    background: #ffffff;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 15px;
+    box-sizing: border-box;
+  }
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f1f3f5;
+    padding-bottom: 10px;
+    color: #212529;
+  }
+  .export-btn {
+    background: #495057;
+    color: #ffffff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  .export-btn:hover { background: #343a40; }
+  
+  .member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .member {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+    position: relative;
+  }
+  .member-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-right: 75px;
+  }
+  .name {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #212529;
+  }
+  .status {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: white;
+    background: #ced4da;
+    font-weight: bold;
+  }
+  
+  .status.working { background: #40c057; }
+  .status.break { background: #fd7e14; }
+  .status.away { background: #868e96; }
+  .status.finished { background: #1c7ed6; }
+  .status.off { background: #845ef7; }
+
+  .actions {
+    display: flex;
+    gap: 4px;
+  }
+  .actions button {
+    flex: 1;
+    padding: 6px 0;
+    font-size: 11px;
+    border: 1px solid #ced4da;
+    background: #ffffff;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #495057;
+  }
+  .actions button:hover { background: #e9ecef; }
+  .actions button:active { background: #dee2e6; }
+  
+  .actions button.active-break {
+    background: #fff4e6;
+    border-color: #ffd8a8;
+    color: #d9480f;
+    font-weight: bold;
+  }
+
+  .member-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+  }
+  .member-controls button {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 3px;
+    line-height: 1;
+  }
+  .member-controls .move-btn:hover { color: #495057; }
+  .member-controls .delete-btn:hover { color: #fa5252; }
+  
+  .member-controls .move-btn:disabled {
+    color: #e9ecef;
+    cursor: default;
+  }
+
+  .add-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px;
+    background: #f1f3f5;
+    border: 1px dashed #adb5bd;
+    border-radius: 6px;
+    color: #495057;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .add-btn:hover {
+    background: #e9ecef;
+    border-color: #868e96;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <h2>Wercker <button class="export-btn" onclick="exportLog()">ログ出力 (MD)</button></h2>
+  <div id="member-list" class="member-list">読み込み中...</div>
+  <button class="add-btn" onclick="addMember()">+ メンバーを追加</button>
+</div>
+
+<!-- Firebase App (the core Firebase SDK) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<!-- Firebase Realtime Database -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+  // Firebaseの初期化（もらった設定をここに）
+  const firebaseConfig = {
+    apiKey: "AIzaSyC92NYQQHJmpqUu3ZFm76DhYJKc_giJGxw",
+    authDomain: "wercker-964ba.firebaseapp.com",
+    projectId: "wercker-964ba",
+    // ★ Realtime DatabaseのURLを手動で追加する必要があります
+    databaseURL: "https://wercker-964ba-default-rtdb.firebaseio.com",
+    storageBucket: "wercker-964ba.firebasestorage.app",
+    messagingSenderId: "514255331547",
+    appId: "1:514255331547:web:cde86749e16cb30d722cfe",
+    measurementId: "G-C8C3JFJWKR"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let members = [];
+  let logs = [];
+
+  const statusMap = {
+    'working': { text: '稼働中', colorClass: 'working' },
+    'break': { text: '休憩中', colorClass: 'break' },
+    'away': { text: '離席中', colorClass: 'away' },
+    'finished': { text: '退勤済', colorClass: 'finished' },
+    'off': { text: '休み', colorClass: 'off' }
+  };
+
+  // Firebaseからデータをリアルタイムで監視・取得
+  db.ref('attendance').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      members = data.members || [];
+      logs = data.logs || [];
+    } else {
+      // 初期データがない場合はサンプルの3名を作成してFirebaseに保存
+      members = [
+        { id: 1, name: 'メンバー 1', status: 'none', statusText: '未稼働' },
+        { id: 2, name: 'メンバー 2', status: 'none', statusText: '未稼働' },
+        { id: 3, name: 'メンバー 3', status: 'none', statusText: '未稼働' }
+      ];
+      saveData();
+    }
+    render();
+  });
+
+  // データをFirebaseに保存する関数
+  function saveData() {
+    db.ref('attendance').set({
+      members: members,
+      logs: logs
+    });
+  }
+
+  function render() {
+    const list = document.getElementById('member-list');
+    list.innerHTML = '';
+    
+    if (members.length === 0) {
+      list.innerHTML = '<p style="text-align:center; color:#868e96; font-size:14px;">メンバーがいません</p>';
+      return;
+    }
+
+    members.forEach((m, index) => {
+      const isBreak = m.status === 'break';
+      const isFirst = index === 0;
+      const isLast = index === members.length - 1;
+      
+      const div = document.createElement('div');
+      div.className = 'member';
+      div.innerHTML = `
+        <div class="member-controls">
+          <button class="move-btn" onclick="moveMember(${m.id}, -1)" title="上へ" ${isFirst ? 'disabled' : ''}>▲</button>
+          <button class="move-btn" onclick="moveMember(${m.id}, 1)" title="下へ" ${isLast ? 'disabled' : ''}>▼</button>
+          <button class="delete-btn" onclick="removeMember(${m.id})" title="削除">×</button>
+        </div>
+        <div class="member-header">
+          <span class="name">${m.name}</span>
+          <span class="status ${m.status}">${m.statusText}</span>
+        </div>
+        <div class="actions">
+          <button onclick="updateStatus(${m.id}, 'working', '稼働開始')">稼働</button>
+          <button class="${isBreak ? 'active-break' : ''}" onclick="toggleBreak(${m.id})">${isBreak ? '戻り' : '休憩'}</button>
+          <button onclick="updateStatus(${m.id}, 'away', '離席')">離席</button>
+          <button onclick="updateStatus(${m.id}, 'finished', '退勤')">退勤</button>
+          <button onclick="updateStatus(${m.id}, 'off', '休み')">休み</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  function moveMember(id, direction) {
+    const index = members.findIndex(m => m.id === id);
+    if (index < 0) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= members.length) return;
+    
+    const temp = members[index];
+    members[index] = members[newIndex];
+    members[newIndex] = temp;
+    saveData();
+  }
+
+  function addMember() {
+    const name = prompt("新しいメンバーの名前を入力してください:");
+    if (name && name.trim() !== "") {
+      const newId = Date.now();
+      members.push({
+        id: newId,
+        name: name.trim(),
+        status: 'none',
+        statusText: '未稼働'
+      });
+      saveData();
+    }
+  }
+
+  function removeMember(id) {
+    const member = members.find(m => m.id === id);
+    if (member && confirm(`「${member.name}」を削除してもよろしいですか？`)) {
+      members = members.filter(m => m.id !== id);
+      saveData();
+    }
+  }
+
+  function toggleBreak(id) {
+    const member = members.find(m => m.id === id);
+    if (member) {
+      if (member.status === 'break') {
+        updateStatus(id, 'working', '休憩戻り');
+      } else {
+        updateStatus(id, 'break', '休憩開始');
+      }
+    }
+  }
+
+  function updateStatus(id, state, actionName) {
+    const member = members.find(m => m.id === id);
+    if (member) {
+      member.status = state;
+      member.statusText = statusMap[state]?.text || '未稼働';
+      
+      const now = new Date();
+      const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      logs.push(`- ${timeString} [${member.name}] ${actionName}`);
+      saveData();
+    }
+  }
+
+  function exportLog() {
+    if (logs.length === 0) {
+      alert("出力するログがありません。");
+      return;
+    }
+    
+    const dateStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '-');
+    const mdContent = `# 稼働ログ (${dateStr})\n\n${logs.join("\n")}`;
+    
+    const blob = new Blob([mdContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `work_log_${dateStr}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setTimeout(() => {
+      if (confirm("ログの出力が完了しました。本日のログ記録をリセットしますか？\n（メンバーの現在のステータスは維持されます）")) {
+        logs = [];
+        saveData();
+      }
+    }, 100);
+  }
+</script>
+</body>
+</html>

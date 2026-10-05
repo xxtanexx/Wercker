@@ -19,8 +19,7 @@
   #app {
     background: #ffffff;
     width: 100%;
-    /* PCで3〜4列が入るように全体の最大幅を広げました */
-    max-width: 1200px; 
+    /* max-widthの制限を外し、画面いっぱいまで広がるようにしました */
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     padding: 15px;
@@ -52,11 +51,10 @@
   }
   .export-btn:hover { background: #343a40; }
   
-  /* カードをグリッド状に並べる設定 */
   .member-list {
     display: grid;
-    /* 1つのカードの最小幅を280pxとし、画面幅に合わせて自動で列数を調整します */
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    /* カード1枚の最小サイズを320pxに広げました */
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 12px;
   }
   
@@ -69,19 +67,36 @@
     display: flex;
     flex-direction: column;
   }
+  
   .member-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     padding-right: 75px;
   }
-  .name {
+  
+  /* 名前編集用の入力欄のスタイル */
+  .name-input {
     font-family: 'Zen Kaku Gothic New', sans-serif;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 16px;
     color: #212529;
+    border: 1px dashed transparent; /* 普段は枠線を隠す */
+    background: transparent;
+    padding: 2px 4px;
+    width: 100%;
+    margin-right: 10px;
+    box-sizing: border-box;
+    border-radius: 4px;
   }
+  .name-input:hover { border-color: #ced4da; } /* ホバー時に枠線を出す */
+  .name-input:focus {
+    outline: none;
+    border-color: #adb5bd;
+    background: #ffffff;
+  }
+
   .status {
     font-size: 11px;
     padding: 4px 10px;
@@ -89,6 +104,7 @@
     color: white;
     background: #ced4da;
     font-weight: bold;
+    white-space: nowrap; /* ステータスが改行されないようにする */
   }
   
   .schedule-input {
@@ -124,7 +140,6 @@
     box-sizing: border-box;
     resize: vertical;
     min-height: 40px;
-    /* テキストエリアが伸びた時に下のボタンが押し出されるように調整 */
     flex-grow: 1; 
   }
   .clients-input:focus {
@@ -142,7 +157,7 @@
   .actions {
     display: flex;
     gap: 4px;
-    margin-top: auto; /* ボタンをカードの一番下に揃える */
+    margin-top: auto;
   }
   .actions button {
     flex: 1;
@@ -282,7 +297,6 @@
       const div = document.createElement('div');
       div.className = 'member';
       
-      // グリッドレイアウトに合わせて、並び替えボタンの意味合いが「左/上へ」「右/下へ」になります
       div.innerHTML = `
         <div class="member-controls">
           <button class="move-btn" onclick="moveMember(${m.id}, -1)" title="前へ" ${isFirst ? 'disabled' : ''}>▲</button>
@@ -290,7 +304,8 @@
           <button class="delete-btn" onclick="removeMember(${m.id})" title="削除">×</button>
         </div>
         <div class="member-header">
-          <span class="name">${m.name}</span>
+          <!-- 名前を直接編集できるようにinputタグに変更 -->
+          <input type="text" class="name-input" placeholder="名前を入力" value="${m.name}" onchange="updateName(${m.id}, this.value)">
           <span class="status ${m.status}">${m.statusText}</span>
         </div>
         <input type="text" class="schedule-input" placeholder="勤務可能曜日と時間" value="${m.schedule || ''}" onchange="updateSchedule(${m.id}, this.value)">
@@ -305,6 +320,17 @@
       `;
       list.appendChild(div);
     });
+  }
+
+  // 名前の更新処理
+  function updateName(id, value) {
+    const member = members.find(m => m.id === id);
+    if (member) {
+      if (value.trim() !== '') {
+        member.name = value.trim();
+      }
+      saveData();
+    }
   }
 
   function updateSchedule(id, value) {
@@ -336,19 +362,17 @@
   }
 
   function addMember() {
-    const name = prompt("新しいメンバーの名前を入力してください:");
-    if (name && name.trim() !== "") {
-      const newId = Date.now();
-      members.push({
-        id: newId,
-        name: name.trim(),
-        status: 'none',
-        statusText: '未稼働',
-        schedule: '',
-        clients: ''
-      });
-      saveData();
-    }
+    // 追加時は仮の名前を入れておき、後から直接編集してもらう形にしました
+    const newId = Date.now();
+    members.push({
+      id: newId,
+      name: '新規メンバー',
+      status: 'none',
+      statusText: '未稼働',
+      schedule: '',
+      clients: ''
+    });
+    saveData();
   }
 
   function removeMember(id) {

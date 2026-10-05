@@ -19,7 +19,8 @@
   #app {
     background: #ffffff;
     width: 100%;
-    max-width: 480px; /* 横幅を480pxに拡張 */
+    /* PCで3〜4列が入るように全体の最大幅を広げました */
+    max-width: 1200px; 
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     padding: 15px;
@@ -51,17 +52,22 @@
   }
   .export-btn:hover { background: #343a40; }
   
+  /* カードをグリッド状に並べる設定 */
   .member-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: grid;
+    /* 1つのカードの最小幅を280pxとし、画面幅に合わせて自動で列数を調整します */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
   }
+  
   .member {
     padding: 10px;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     background: #f8f9fa;
     position: relative;
+    display: flex;
+    flex-direction: column;
   }
   .member-header {
     display: flex;
@@ -87,14 +93,14 @@
   
   .schedule-input {
     font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-weight: 700; /* デフォルトでボールドに */
+    font-weight: 700;
     font-size: 11px;
     color: #495057;
     border: 1px dashed #ced4da;
     border-radius: 4px;
     padding: 4px 6px;
     width: 100%;
-    margin-bottom: 4px; /* 下の要素との余白を少し調整 */
+    margin-bottom: 4px;
     background: transparent;
     box-sizing: border-box;
   }
@@ -104,10 +110,9 @@
     background: #ffffff;
   }
 
-  /* アサイン先クライアント用のテキストエリア設定 */
   .clients-input {
     font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-weight: 500; /* こちらは通常の太さ */
+    font-weight: 500;
     font-size: 11px;
     color: #495057;
     border: 1px dashed #ced4da;
@@ -117,8 +122,10 @@
     margin-bottom: 8px;
     background: transparent;
     box-sizing: border-box;
-    resize: vertical; /* 縦方向のみ伸縮可能に */
-    min-height: 40px; /* デフォルトで約2〜3行分の高さ */
+    resize: vertical;
+    min-height: 40px;
+    /* テキストエリアが伸びた時に下のボタンが押し出されるように調整 */
+    flex-grow: 1; 
   }
   .clients-input:focus {
     outline: none;
@@ -135,6 +142,7 @@
   .actions {
     display: flex;
     gap: 4px;
+    margin-top: auto; /* ボタンをカードの一番下に揃える */
   }
   .actions button {
     flex: 1;
@@ -205,9 +213,7 @@
   <button class="add-btn" onclick="addMember()">+ メンバーを追加</button>
 </div>
 
-<!-- Firebase App (the core Firebase SDK) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<!-- Firebase Realtime Database -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
@@ -264,7 +270,7 @@
     list.innerHTML = '';
     
     if (members.length === 0) {
-      list.innerHTML = '<p style="text-align:center; color:#868e96; font-size:14px;">メンバーがいません</p>';
+      list.innerHTML = '<p style="text-align:center; color:#868e96; font-size:14px; grid-column: 1 / -1;">メンバーがいません</p>';
       return;
     }
 
@@ -275,10 +281,12 @@
       
       const div = document.createElement('div');
       div.className = 'member';
+      
+      // グリッドレイアウトに合わせて、並び替えボタンの意味合いが「左/上へ」「右/下へ」になります
       div.innerHTML = `
         <div class="member-controls">
-          <button class="move-btn" onclick="moveMember(${m.id}, -1)" title="上へ" ${isFirst ? 'disabled' : ''}>▲</button>
-          <button class="move-btn" onclick="moveMember(${m.id}, 1)" title="下へ" ${isLast ? 'disabled' : ''}>▼</button>
+          <button class="move-btn" onclick="moveMember(${m.id}, -1)" title="前へ" ${isFirst ? 'disabled' : ''}>▲</button>
+          <button class="move-btn" onclick="moveMember(${m.id}, 1)" title="次へ" ${isLast ? 'disabled' : ''}>▼</button>
           <button class="delete-btn" onclick="removeMember(${m.id})" title="削除">×</button>
         </div>
         <div class="member-header">
@@ -307,7 +315,6 @@
     }
   }
 
-  // クライアント名の更新処理
   function updateClients(id, value) {
     const member = members.find(m => m.id === id);
     if (member) {
@@ -338,7 +345,7 @@
         status: 'none',
         statusText: '未稼働',
         schedule: '',
-        clients: '' // 新しいデータ項目の初期化
+        clients: ''
       });
       saveData();
     }
